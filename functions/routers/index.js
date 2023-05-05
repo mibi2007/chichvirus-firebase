@@ -8,11 +8,34 @@ const configs = require('../configs');
 
 router.get('/maps/:id', async (req, res) => {
   const id = req.params.id;
-  const mapDoc = await admin.firestore().collection('Maps').doc(id);
+  const mapDoc = admin.firestore().collection('Maps').doc(id);
 
   const mapSnap = await mapDoc.get();
   res.json({
     data: mapSnap.data(),
+  });
+});
+
+router.get('/lastest_map/:userId', async (req, res) => {
+  const userId = req.params.userId;
+  const lastMap = admin
+    .firestore()
+    .collection('Users')
+    .doc(userId)
+    .collection('PlayedMaps')
+    .orderBy('solvedAt', 'desc')
+    .limit(1);
+  const mapQuery = await lastMap.get();
+
+  const mapId = mapQuery.docs[0].id ?? 0;
+  const mapDoc = admin.firestore().collection('Maps').doc(mapId);
+
+  const mapSnap = await mapDoc.get();
+  res.json({
+    data: {
+      mapId: mapId,
+      map: mapSnap.data(),
+    },
   });
 });
 
@@ -90,6 +113,26 @@ router.post('/check_match', async (req, res) => {
     const uids = (await matchRef.child('uids').get()).val();
     uids.forEach((uid) => {
       admin.database().ref(`/finding/${uid}`).remove();
+    });
+    res.json({
+      data: 'CORRECT',
+    });
+  } else {
+    res.json({
+      data: 'WRONG',
+    });
+  }
+});
+
+router.post('/check_solution', async (req, res) => {
+  const userId = req.body.userId;
+  const mapId = req.body.mapId;
+  const solution = req.body.solution;
+  const map = (await admin.firestore().collection('Maps').doc(mapId).get()).data();
+  if (solution == JSON.stringify(map.solution)) {
+    // console.log(map);
+    admin.firestore().collection('Users').doc(userId).collection('PlayedMaps').doc(mapId).set({
+      solvedAt: new Date().getTime(),
     });
     res.json({
       data: 'CORRECT',
