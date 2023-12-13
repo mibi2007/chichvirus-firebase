@@ -27,7 +27,7 @@ router.get('/lastest_map/:userId', async (req, res) => {
     .limit(1);
   const mapQuery = await lastMap.get();
 
-  const mapId = mapQuery.docs[0].id ?? 0;
+  const mapId = mapQuery.docs[0] != undefined ? (parseInt(mapQuery.docs[0].id) + 1).toString() : '0';
   const mapDoc = admin.firestore().collection('Maps').doc(mapId);
 
   const mapSnap = await mapDoc.get();
